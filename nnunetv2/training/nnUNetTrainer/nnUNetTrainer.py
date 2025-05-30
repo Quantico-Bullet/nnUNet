@@ -178,7 +178,7 @@ class nnUNetTrainer(object):
         
         wandb.login(key="f0ca71ae6912c78891567a52c333cd3f61a8749a")
         run = wandb.init(
-            project="nnUnetBaseline_Dice_Epoch50-120",  # Specify your project
+            project="nnUnetBaseline_Dice_Epoch86+",  # Specify your project
                   # We pass a run name (otherwise it’ll be randomly assigned, like sunshine-lollypop-10)
             name = f"nnUNet_{int(time())}",
             config={                        # Track hyperparameters and metadata
