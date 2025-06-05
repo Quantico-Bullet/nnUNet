@@ -33,6 +33,8 @@ from nnunetv2.utilities.find_class_by_name import recursive_find_python_class
 from nnunetv2.utilities.plans_handling.plans_handler import PlansManager, ConfigurationManager
 from nnunetv2.utilities.utils import get_filenames_of_train_images_and_targets
 
+from nnunetv2.preprocessing.filtering.default_filtering import apply_clahe
+
 
 class DefaultPreprocessor(object):
     def __init__(self, verbose: bool = True):
@@ -66,6 +68,12 @@ class DefaultPreprocessor(object):
         properties['bbox_used_for_cropping'] = bbox
         # print(data.shape, seg.shape)
         properties['shape_after_cropping_and_before_resampling'] = data.shape[1:]
+
+        # CLAHE
+        if self.verbose:
+            print("Applying CLAHE on dataset...")
+
+        data = apply_clahe(data)
 
         # resample
         target_spacing = configuration_manager.spacing  # this should already be transposed

@@ -169,18 +169,18 @@ class nnUNetTrainer(object):
         self.weight_decay = 3e-5
         self.oversample_foreground_percent = 0.33
         self.probabilistic_oversampling = False
-        self.num_iterations_per_epoch = 250
+        self.num_iterations_per_epoch = 10
         self.num_val_iterations_per_epoch = 50
         self.num_epochs = 200
         self.current_epoch = 0
         self.enable_deep_supervision = True
         self.kweight = 10
         
-        wandb.login(key="f0ca71ae6912c78891567a52c333cd3f61a8749a")
+        wandb.login(key="51ffe1022d9cb8e7e7a504cbf9a800d732b5de57")
         run = wandb.init(
-            project="nnUnetBaseline_Dice_Epoch120-200",  # Specify your project
+            project="nnUnetBaseline_CLAHE_FOLD-TEST",  # Specify your project
                   # We pass a run name (otherwise it’ll be randomly assigned, like sunshine-lollypop-10)
-            name = f"nnUNet_{int(time())}",
+            name = f"nnUNet_CLAHE_{time()}",
             config={                        # Track hyperparameters and metadata
                 
                 "learning_rate": self.initial_lr,
