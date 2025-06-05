@@ -176,7 +176,7 @@ class nnUNetTrainer(object):
         
         wandb.login(key="51ffe1022d9cb8e7e7a504cbf9a800d732b5de57")
         run = wandb.init(
-            project="nnUnetBaseline_CLAHE_FOLD-TEST",  # Specify your project
+            project="nnUnetBaseline_CLAHE_FOLD-TEST2",  # Specify your project
                   # We pass a run name (otherwise it’ll be randomly assigned, like sunshine-lollypop-10)
             name = f"nnUNet_CLAHE_{time()}",
             config={                        # Track hyperparameters and metadata

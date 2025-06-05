@@ -70,10 +70,10 @@ class DefaultPreprocessor(object):
         properties['shape_after_cropping_and_before_resampling'] = data.shape[1:]
 
         # CLAHE
-        if self.verbose:
-            print("Applying CLAHE on dataset...")
+        #if self.verbose:
+        #    print("Applying CLAHE on dataset...")
 
-        data = apply_clahe(data)
+        #data = apply_clahe(data)
 
         # resample
         target_spacing = configuration_manager.spacing  # this should already be transposed
