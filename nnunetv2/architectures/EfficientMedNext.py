@@ -2,10 +2,7 @@ import torch
 import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
 
-from nnunetv2.architectures.blocks import OutBlock
-from nnunetv2.architectures.efficient_mednext_blocks import (EfficientMedNeXtBlock, 
-                                                             EfficientMedNeXtDownBlock,
-                                                             EfficientMedNeXtUpBlock)
+from nnunetv2.architectures.efficient_mednext_blocks import *
 
 class EfficientMedNeXt(nn.Module):
 
@@ -32,7 +29,7 @@ class EfficientMedNeXt(nn.Module):
 
         super().__init__()
 
-        self.do_ds = deep_supervision
+        self.do_ds = deep_supervision #deep_supervision
         assert checkpoint_style in [None, 'outside_block']
         self.inside_block_checkpointing = False
         self.outside_block_checkpointing = False
@@ -354,10 +351,11 @@ class EfficientMedNeXt(nn.Module):
         return x
 
 
-    def forward(self, x, mode='test'):
+    def forward(self, x, mode='train'):
         
         x = self.stem(x)
-        if self.outside_block_checkpointing:
+        
+        if True:
             x_res_0 = self.iterative_checkpoint(self.enc_block_0, x)
             x = checkpoint.checkpoint(self.down_0, x_res_0, self.dummy_tensor)
             x_res_1 = self.iterative_checkpoint(self.enc_block_1, x)
