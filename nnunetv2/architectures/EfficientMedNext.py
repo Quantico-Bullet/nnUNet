@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
 
+from nnunetv2.architectures.blocks import OutBlock
 from nnunetv2.architectures.efficient_mednext_blocks import (EfficientMedNeXtBlock, 
                                                              EfficientMedNeXtDownBlock,
                                                              EfficientMedNeXtUpBlock)
