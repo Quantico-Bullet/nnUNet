@@ -346,11 +346,12 @@ class nnUNetTrainer(object):
 
     def _set_batch_size_and_oversample(self):
 
-        self.configuration_manager['batch_size'] = 1 #Set the batch size to 1
+        #self.configuration_manager['batch_size'] = 1 #Set the batch size to 1
 
         if not self.is_ddp:
             # set batch size to what the plan says, leave oversample untouched
             self.batch_size = self.configuration_manager.batch_size
+            self.batch_size = 1
         else:
             # batch size is distributed over DDP workers and we need to change oversample_percent for each worker
 
@@ -358,6 +359,7 @@ class nnUNetTrainer(object):
             my_rank = dist.get_rank()
 
             global_batch_size = self.configuration_manager.batch_size
+            global_batch_size = 1
             assert global_batch_size >= world_size, 'Cannot run DDP if the batch size is smaller than the number of ' \
                                                     'GPUs... Duh.'
 
@@ -630,8 +632,7 @@ class nnUNetTrainer(object):
 
         # we use the patch size to determine whether we need 2D or 3D dataloaders. We also use it to determine whether
         # we need to use dummy 2D augmentation (in case of 3D training) and what our initial patch size should be
-        self.configuration_manager['patch_size'] = [96, 96, 96]
-        patch_size = self.configuration_manager.patch_size
+        patch_size = [96, 96, 96] #self.configuration_manager.patch_size
 
         # needed for deep supervision: how much do we need to downscale the segmentation targets for the different
         # outputs?
@@ -643,6 +644,8 @@ class nnUNetTrainer(object):
             initial_patch_size,
             mirror_axes,
         ) = self.configure_rotation_dummyDA_mirroring_and_inital_patch_size()
+
+        initial_patch_size = patch_size
 
         self.print_to_log_file('Setting mirror axes to None to prevent orientation issues.')
         mirror_axes = None
