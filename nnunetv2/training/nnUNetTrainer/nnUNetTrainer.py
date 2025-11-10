@@ -346,7 +346,7 @@ class nnUNetTrainer(object):
 
     def _set_batch_size_and_oversample(self):
 
-        self.configuration_manager.batch_size = 1 #Set the batch size to 1
+        self.configuration_manager['batch_size'] = 1 #Set the batch size to 1
 
         if not self.is_ddp:
             # set batch size to what the plan says, leave oversample untouched
@@ -630,7 +630,7 @@ class nnUNetTrainer(object):
 
         # we use the patch size to determine whether we need 2D or 3D dataloaders. We also use it to determine whether
         # we need to use dummy 2D augmentation (in case of 3D training) and what our initial patch size should be
-        self.configuration_manager.patch_size = (96, 96, 96)
+        self.configuration_manager['patch_size'] = [96, 96, 96]
         patch_size = self.configuration_manager.patch_size
 
         # needed for deep supervision: how much do we need to downscale the segmentation targets for the different
