@@ -1397,6 +1397,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
     def __init__(self, plans, configuration, fold, dataset_json, device = torch.device('cuda')):
         super().__init__(plans, configuration, fold, dataset_json, device)
 
+        self.initial_lr = 2e-3
         self.save_every = 2 # We want to save every 2 epochs
 
     @staticmethod
@@ -1409,7 +1410,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         
         return create_efficient_mednext(num_input_channels = num_input_channels, 
                                         num_classes = num_output_channels, 
-                                        model_id = "S",
+                                        model_id = "M",
                                         deep_supervision = enable_deep_supervision)
     
     def set_deep_supervision_enabled(self, enabled: bool):
