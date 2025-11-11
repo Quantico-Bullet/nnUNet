@@ -149,7 +149,7 @@ class nnUNetTrainer(object):
         self.probabilistic_oversampling = False
         self.num_iterations_per_epoch = 250
         self.num_val_iterations_per_epoch = 50
-        self.num_epochs = 50
+        self.num_epochs = 250
         self.current_epoch = 0
         self.enable_deep_supervision = True
 
@@ -1398,6 +1398,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         super().__init__(plans, configuration, fold, dataset_json, device)
 
         self.initial_lr = 2e-3
+        self.num_epochs = 50
         self.save_every = 2 # We want to save every 2 epochs
 
     @staticmethod
