@@ -1411,8 +1411,8 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         
         return create_efficient_mednext(num_input_channels = num_input_channels, 
                                         num_classes = num_output_channels, 
-                                        model_id = "M",
+                                        model_id = "S",
                                         deep_supervision = enable_deep_supervision)
     
     def set_deep_supervision_enabled(self, enabled: bool):
-        pass
+        self.enable_deep_supervision = enabled
