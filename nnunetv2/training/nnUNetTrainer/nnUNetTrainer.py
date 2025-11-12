@@ -359,7 +359,7 @@ class nnUNetTrainer(object):
             my_rank = dist.get_rank()
 
             global_batch_size = self.configuration_manager.batch_size
-            global_batch_size = 1
+            global_batch_size = 2
             assert global_batch_size >= world_size, 'Cannot run DDP if the batch size is smaller than the number of ' \
                                                     'GPUs... Duh.'
 
