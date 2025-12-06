@@ -1402,6 +1402,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         self.num_epochs = 50
         self.save_every = 2 # We want to save every 2 epochs
 
+        wandb.login(key=os.environ["WANDB_API_KEY"])
         wandb.init(project = "EMedNeXt_Small_PROSTATE", 
                    name = "PROSTATE_k=3")
 
@@ -1422,8 +1423,9 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         super().on_train_epoch_end(train_outputs)
 
         pseudo_dice = self.logger.my_fantastic_logging['dice_per_class_or_region'][-1]
-        log_dict = {f"dice_class_{i}": pseudo_dice[i] for i in range(len(pseudo_dice))}
+        log_dict = {f"dice_class_{i}": j for i,j in enumerate(pseudo_dice)}
         log_dict["epoch"] = self.current_epoch
+        log_dict["lr"] = self.optimizer.param_groups[0]["lr"]
 
         wandb.log(log_dict)
     
