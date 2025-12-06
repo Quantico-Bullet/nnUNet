@@ -67,6 +67,7 @@ from nnunetv2.utilities.helpers import empty_cache, dummy_context
 from nnunetv2.utilities.label_handling.label_handling import convert_labelmap_to_one_hot, determine_num_input_channels
 from nnunetv2.utilities.plans_handling.plans_handler import PlansManager
 
+import wandb
 
 class nnUNetTrainer(object):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
@@ -1401,6 +1402,9 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         self.num_epochs = 50
         self.save_every = 2 # We want to save every 2 epochs
 
+        wandb.init(project = "EMedNeXt_Small_PROSTATE", 
+                   name = "PROSTATE_k=3")
+
     @staticmethod
     def build_network_architecture(architecture_class_name: str,
                                    arch_init_kwargs: dict,
@@ -1413,6 +1417,15 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
                                         num_classes = num_output_channels, 
                                         model_id = "S",
                                         deep_supervision = enable_deep_supervision)
+    
+    def on_train_epoch_end(self, train_outputs):
+        super().on_train_epoch_end(train_outputs)
+
+        pseudo_dice = self.logger.my_fantastic_logging['dice_per_class_or_region'][-1]
+        log_dict = {f"dice_class_{i}": pseudo_dice[i] for i in range(len(pseudo_dice))}
+        log_dict["epoch"] = self.current_epoch
+
+        wandb.log(log_dict)
     
     def set_deep_supervision_enabled(self, enabled: bool):
         self.enable_deep_supervision = enabled
