@@ -1404,7 +1404,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
 
         wandb.login(key=os.environ["WANDB_API_KEY"])
         wandb.init(project = "EMedNeXt_Small_PROSTATE", 
-                   name = "PROSTATE_k=3")
+                   name = f"PROSTATE_k=3_fold={self.fold}")
 
     @staticmethod
     def build_network_architecture(architecture_class_name: str,
