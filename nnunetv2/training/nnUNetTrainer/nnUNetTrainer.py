@@ -1419,8 +1419,8 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
                                         model_id = "S",
                                         deep_supervision = enable_deep_supervision)
     
-    def on_train_epoch_end(self, train_outputs):
-        super().on_train_epoch_end(train_outputs)
+    def on_epoch_end(self):
+        super().on_epoch_end()
 
         pseudo_dice = self.logger.my_fantastic_logging['dice_per_class_or_region'][-1]
         log_dict = {f"dice_class_{i}": j for i,j in enumerate(pseudo_dice)}
