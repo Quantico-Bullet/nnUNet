@@ -1398,9 +1398,9 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
     def __init__(self, plans, configuration, fold, dataset_json, device = torch.device('cuda')):
         super().__init__(plans, configuration, fold, dataset_json, device)
 
-        self.initial_lr = 2e-3
-        self.num_epochs = 50
-        self.save_every = 2 # We want to save every 2 epochs
+        self.initial_lr = 1e-2
+        self.num_epochs = 500
+        self.save_every = 10 # We want to save every 2 epochs
 
         wandb.login(key=os.environ["WANDB_API_KEY"])
         wandb.init(project = "EMedNeXt_Small_PROSTATE", 
