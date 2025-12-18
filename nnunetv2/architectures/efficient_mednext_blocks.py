@@ -75,7 +75,7 @@ class EfficientMedNeXtBlock(nn.Module):
                 )
         
         # Threshold
-        self.act = nn.Threshold(0, 1.5)
+        self.act = nn.ReLU()
         
         # Third convolution (Compression) layer with Conv3D 1x1x1
         self.conv3 = conv(
