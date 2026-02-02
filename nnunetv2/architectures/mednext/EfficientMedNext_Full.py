@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
 
-from nnunetv2.architectures.efficient_mednext_blocks import *
+from nnunetv2.architectures.mednext.efficient_mednext_blocks import *
 
-class EfficientMedNeXt(nn.Module):
+class EfficientMedNeXt_L(nn.Module):
 
     def __init__(self, 
         in_channels: int, 
@@ -29,7 +29,7 @@ class EfficientMedNeXt(nn.Module):
 
         super().__init__()
 
-        self.do_ds = deep_supervision #deep_supervision
+        self.do_ds = deep_supervision
         assert checkpoint_style in [None, 'outside_block']
         self.inside_block_checkpointing = False
         self.outside_block_checkpointing = False
@@ -54,8 +54,9 @@ class EfficientMedNeXt(nn.Module):
         if uniform_dec_channels == None:
             dec_num_channels =  [nc for nc in num_channels] 
         else:
-            dec_num_channels =  [uniform_dec_channels for i in range(len(num_channels))] 
-        print(dec_num_channels)  
+            dec_num_channels =  [uniform_dec_channels for i in range(len(num_channels))] # Our uniform decoder channels
+        print(dec_num_channels)     
+
         self.stem = conv(in_channels, num_channels[0], kernel_size=1)
         
         self.enc_block_0 = nn.Sequential(*[
@@ -213,17 +214,17 @@ class EfficientMedNeXt(nn.Module):
                 dim=dim,
                 grn=grn
                 )
-        if mode == 'train':
-            self.crrb0 = EfficientMedNeXtBlock(
-                in_channels=num_channels[0],
-                out_channels=dec_num_channels[0],
-                kernel_sizes=dec_kernel_sizes,
-                strides = strides,
-                do_res=do_res,
-                norm_type=norm_type,
-                dim=dim,
-                grn=grn
-            )
+        #if mode == 'train':
+        self.crrb0 = EfficientMedNeXtBlock(
+            in_channels=num_channels[0],
+            out_channels=dec_num_channels[0],
+            kernel_sizes=dec_kernel_sizes,
+            strides = strides,
+            do_res=do_res,
+            norm_type=norm_type,
+            dim=dim,
+            grn=grn
+        )
             
         self.up_3 = EfficientMedNeXtUpBlock(
             in_channels=dec_num_channels[4],
@@ -299,42 +300,41 @@ class EfficientMedNeXt(nn.Module):
                 )
             for i in range(block_counts[7])]
         )
-        if mode == 'train':
-            self.up_0 = EfficientMedNeXtUpBlock(
-                in_channels=dec_num_channels[1],
+        #if mode == 'train':
+        self.up_0 = EfficientMedNeXtUpBlock(
+            in_channels=dec_num_channels[1],
+            out_channels=dec_num_channels[0],
+            kernel_sizes=dec_kernel_sizes,
+            strides = up_down_strides,
+            do_res=do_res_up_down,
+            norm_type=norm_type,
+            dim=dim,
+            grn=grn
+        )
+
+        self.dec_block_0 = nn.Sequential(*[
+            EfficientMedNeXtBlock(
+                in_channels=dec_num_channels[0],
                 out_channels=dec_num_channels[0],
                 kernel_sizes=dec_kernel_sizes,
-                strides = up_down_strides,
-                do_res=do_res_up_down,
+                strides = strides,
+                do_res=do_res,
                 norm_type=norm_type,
                 dim=dim,
                 grn=grn
             )
-        
-            self.dec_block_0 = nn.Sequential(*[
-                EfficientMedNeXtBlock(
-                    in_channels=dec_num_channels[0],
-                    out_channels=dec_num_channels[0],
-                    kernel_sizes=dec_kernel_sizes,
-                    strides = strides,
-                    do_res=do_res,
-                    norm_type=norm_type,
-                    dim=dim,
-                    grn=grn
-                )
-                for i in range(block_counts[8])]
-            )
-            self.out_0 = OutBlock(in_channels=dec_num_channels[0], n_classes=n_classes, dim=dim)
-        
-        self.out_1 = OutBlock(in_channels=dec_num_channels[1], n_classes=n_classes, dim=dim)#, stride=2)
+            for i in range(block_counts[8])]
+        )
+        self.out_0 = OutBlock(in_channels=dec_num_channels[0], n_classes=n_classes, dim=dim)
             
         # Used to fix PyTorch checkpointing bug
         self.dummy_tensor = nn.Parameter(torch.tensor([1.]), requires_grad=True)  
 
-        if deep_supervision and mode == 'train':
-            self.out_2 = OutBlock(in_channels=dec_num_channels[2], n_classes=n_classes, dim=dim)#, stride=4)
-            self.out_3 = OutBlock(in_channels=dec_num_channels[3], n_classes=n_classes, dim=dim)#, stride=8)
-            self.out_4 = OutBlock(in_channels=dec_num_channels[4], n_classes=n_classes, dim=dim)#, stride=16)
+        if deep_supervision:# and mode == 'train':
+            self.out_1 = OutBlock(in_channels=dec_num_channels[1], n_classes=n_classes, dim=dim)
+            self.out_2 = OutBlock(in_channels=dec_num_channels[2], n_classes=n_classes, dim=dim)
+            self.out_3 = OutBlock(in_channels=dec_num_channels[3], n_classes=n_classes, dim=dim)
+            self.out_4 = OutBlock(in_channels=dec_num_channels[4], n_classes=n_classes, dim=dim)
 
         self.block_counts = block_counts
 
@@ -351,11 +351,10 @@ class EfficientMedNeXt(nn.Module):
         return x
 
 
-    def forward(self, x, mode='train'):
+    def forward(self, x, mode='test'):
         
         x = self.stem(x)
-        
-        if False:
+        if self.outside_block_checkpointing:
             x_res_0 = self.iterative_checkpoint(self.enc_block_0, x)
             x = checkpoint.checkpoint(self.down_0, x_res_0, self.dummy_tensor)
             x_res_1 = self.iterative_checkpoint(self.enc_block_1, x)
@@ -365,8 +364,8 @@ class EfficientMedNeXt(nn.Module):
             x_res_3 = self.iterative_checkpoint(self.enc_block_3, x)
             x = checkpoint.checkpoint(self.down_3, x_res_3, self.dummy_tensor)
 
-            if mode != 'test':
-                x_res_0 = checkpoint.checkpoint(self.crrb0, x_res_0, self.dummy_tensor)
+            #if mode != 'test':
+            x_res_0 = checkpoint.checkpoint(self.crrb0, x_res_0, self.dummy_tensor)
             x_res_1 = checkpoint.checkpoint(self.crrb1, x_res_1, self.dummy_tensor)
             x_res_2 = checkpoint.checkpoint(self.crrb2, x_res_2, self.dummy_tensor)
             x_res_3 = checkpoint.checkpoint(self.crrb3, x_res_3, self.dummy_tensor)
@@ -394,12 +393,12 @@ class EfficientMedNeXt(nn.Module):
             dec_x = x_res_1 + x_up_1 
             x = self.iterative_checkpoint(self.dec_block_1, dec_x)
             del x_res_1, x_up_1
-            if self.do_ds or mode =='test':
+            if self.do_ds: # or mode =='test':
                 x_ds_1 = checkpoint.checkpoint(self.out_1, x, self.dummy_tensor)
             #Newly added start
-            if mode == 'test':
+            #if mode == 'test':
                 #print('returning early')
-                return [x_ds_1]
+            #   return [x_ds_1]
             x_up_0 = checkpoint.checkpoint(self.up_0, x, self.dummy_tensor)
             dec_x = x_res_0 + x_up_0 
             x = self.iterative_checkpoint(self.dec_block_0, dec_x)
@@ -418,8 +417,8 @@ class EfficientMedNeXt(nn.Module):
             x_res_3 = self.enc_block_3(x)
             x = self.down_3(x_res_3)
 
-            if mode != 'test':
-                x_res_0 = self.crrb0(x_res_0)
+            #if mode != 'test':
+            x_res_0 = self.crrb0(x_res_0)
             x_res_1 = self.crrb1(x_res_1)
             x_res_2 = self.crrb2(x_res_2)
             x_res_3 = self.crrb3(x_res_3)
@@ -448,12 +447,12 @@ class EfficientMedNeXt(nn.Module):
             dec_x = x_res_1 + x_up_1 
             x = self.dec_block_1(dec_x)
             del x_res_1, x_up_1
-            if self.do_ds or mode =='test':
+            if self.do_ds: #or mode =='test':
                 x_ds_1 = self.out_1(x)
             
             #newly added start
-            if mode == 'test':
-                return [x_ds_1]
+            #if mode == 'test':
+            #    return [x_ds_1]
             x_up_0 = self.up_0(x)
             dec_x = x_res_0 + x_up_0 
             x = self.dec_block_0(dec_x)
@@ -470,7 +469,7 @@ class EfficientMedNeXt(nn.Module):
 
 if __name__ == "__main__":
 
-    network = EfficientMedNeXt(
+    network = EfficientMedNeXt_L(
             in_channels = 1, 
             n_channels = 32,
             n_classes = 13,
@@ -486,7 +485,6 @@ if __name__ == "__main__":
             grn=True
             
         ).cuda()
-    
 
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)

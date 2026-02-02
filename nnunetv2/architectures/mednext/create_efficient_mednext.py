@@ -1,7 +1,7 @@
 #from networks.MedNeXt.mednextv1.MD_MedNextOV1 import MD_MedNeXtO
-from nnunetv2.architectures.EfficientMedNext import EfficientMedNeXt
+from nnunetv2.architectures.mednext.EfficientMedNext import EfficientMedNeXt
 
-from nnunetv2.architectures.EfficientMedNext_Full import EfficientMedNeXt_L
+from nnunetv2.architectures.mednext.EfficientMedNext_Full import EfficientMedNeXt_L
 #from networks.MedNeXt.mednextv1.MD_MedNextOVF import MD_MedNeXtO
 
 def create_efficient_mednext_tiny(num_input_channels, num_classes, n_channels=32, kernel_sizes=[1,3,5], strides=[1,1,1], uniform_dec_channels=None, ds=False, mode='train'):
@@ -69,7 +69,7 @@ def create_efficient_mednext_large(num_input_channels, num_classes, n_channels=3
         do_res_up_down = True,
         block_counts = [3,4,4,4,4,4,4,4,3],
         checkpoint_style = 'outside_block',
-        mode = mode
+        mode = mode,
     )
 
 def create_efficient_mednext(num_input_channels, num_classes, model_id, n_channels=32, kernel_sizes=[1,3,5], strides=[1,1,1],
@@ -83,7 +83,8 @@ def create_efficient_mednext(num_input_channels, num_classes, model_id, n_channe
         }
     
     return model_dict[model_id](
-        num_input_channels, num_classes, n_channels, kernel_sizes, strides, uniform_dec_channels, deep_supervision, mode=mode
+        num_input_channels, num_classes, n_channels, kernel_sizes, 
+        strides, uniform_dec_channels, deep_supervision, mode=mode,
         )
 
 if __name__ == "__main__":

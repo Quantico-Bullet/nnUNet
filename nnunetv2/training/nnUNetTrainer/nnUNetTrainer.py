@@ -43,7 +43,7 @@ from torch.cuda import device_count
 from torch import GradScaler
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from nnunetv2.architectures.create_efficient_mednext import create_efficient_mednext
+from nnunetv2.architectures.mednext.create_efficient_mednext import create_efficient_mednext
 from nnunetv2.configuration import ANISO_THRESHOLD, default_num_processes
 from nnunetv2.evaluation.evaluate_predictions import compute_metrics_on_folder
 from nnunetv2.inference.export_prediction import export_prediction_from_logits, resample_and_save
@@ -633,7 +633,8 @@ class nnUNetTrainer(object):
 
         # we use the patch size to determine whether we need 2D or 3D dataloaders. We also use it to determine whether
         # we need to use dummy 2D augmentation (in case of 3D training) and what our initial patch size should be
-        patch_size = [96, 160, 160]#self.configuration_manager.patch_size
+        self.custom_patch_size = [96, 160, 160]#self.configuration_manager.patch_size
+
 
         # needed for deep supervision: how much do we need to downscale the segmentation targets for the different
         # outputs?
@@ -646,13 +647,13 @@ class nnUNetTrainer(object):
             mirror_axes,
         ) = self.configure_rotation_dummyDA_mirroring_and_inital_patch_size()
 
-        initial_patch_size = patch_size
+        initial_patch_size = self.custom_patch_size
 
         self.print_to_log_file('Setting mirror axes to None to prevent orientation issues.')
         mirror_axes = None
         # training pipeline
         tr_transforms = self.get_training_transforms(
-            patch_size, rotation_for_DA, deep_supervision_scales, mirror_axes, do_dummy_2d_data_aug,
+            self.custom_patch_size, rotation_for_DA, deep_supervision_scales, mirror_axes, do_dummy_2d_data_aug,
             use_mask_for_norm=self.configuration_manager.use_mask_for_norm,
             is_cascaded=self.is_cascaded, foreground_labels=self.label_manager.foreground_labels,
             regions=self.label_manager.foreground_regions if self.label_manager.has_regions else None,
@@ -1400,7 +1401,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
 
         self.initial_lr = 1e-2
         self.num_epochs = 500
-        self.save_every = 10 # We want to save every 2 epochs
+        self.save_every = 2 # We want to save every 2 epochs
 
         wandb.login(key=os.environ["WANDB_API_KEY"])
         wandb.init(project = "EMedNeXt_Small_PROSTATE", 
