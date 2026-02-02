@@ -1403,7 +1403,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         self.num_epochs = 100
         self.save_every = 2 # We want to save every 2 epochs
 
-        wandb.login(key=os.environ["WANDB_API_KEY"])
+        #wandb.login(key=os.environ["WANDB_API_KEY"])
         wandb.init(project = "EMedNeXt_Small_PROSTATE", 
                    name = f"PROSTATE_k=3_fold={self.fold}")
 
