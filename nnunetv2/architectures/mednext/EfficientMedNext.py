@@ -357,7 +357,7 @@ class EfficientMedNeXt(nn.Module):
         
         x = self.stem(x)
         
-        if False:
+        if True:
             x_res_0 = self.iterative_checkpoint(self.enc_block_0, x)
             x = checkpoint.checkpoint(self.down_0, x_res_0, self.dummy_tensor)
             x_res_1 = self.iterative_checkpoint(self.enc_block_1, x)
