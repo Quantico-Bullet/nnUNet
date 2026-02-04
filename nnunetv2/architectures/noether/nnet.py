@@ -13,6 +13,7 @@ class NoetherNet(nn.Module):
         super().__init__()
 
         self.do_checkpointing = do_checkpointing
+        self.deep_supervision = deep_supervision
 
         num_channels =  [n_channels, n_channels*2, n_channels*4, n_channels*8, n_channels*16]
         self.stem = nn.Conv3d(in_channels, num_channels[0], kernel_size=1)
@@ -81,7 +82,10 @@ class NoetherNet(nn.Module):
         self.out0 = OutBlock(num_channels[0], n_classes)
 
         if deep_supervision:
-            pass
+            self.out1 = OutBlock(num_channels[1], n_classes)
+            self.out2 = OutBlock(num_channels[2], n_classes)
+            self.out3 = OutBlock(num_channels[3], n_classes)
+            self.out4 = OutBlock(num_channels[4], n_classes)
 
         self.dummy_tensor = nn.Parameter(torch.tensor([1.]), requires_grad=True)
 
@@ -104,12 +108,28 @@ class NoetherNet(nn.Module):
             x = self.iterative_checkpoint(self.enc_block_3, x)
             x = checkpoint.checkpoint(self.down_block_3, x)
             x = self.iterative_checkpoint(self.bottleneck, x)
+
+            if self.deep_supervision:
+                x_ds_4 = checkpoint.checkpoint(self.out4, x)
+
             x = checkpoint.checkpoint(self.up_block_3, x)
             x = self.iterative_checkpoint(self.dec_block_3, x)
+
+            if self.deep_supervision:
+                x_ds_3 = checkpoint.checkpoint(self.out3, x)
+
             x = checkpoint.checkpoint(self.up_block_2, x)
             x = self.iterative_checkpoint(self.dec_block_2, x)
+
+            if self.deep_supervision:
+                x_ds_2 = checkpoint.checkpoint(self.out2, x)
+
             x = checkpoint.checkpoint(self.up_block_1, x)
             x = self.iterative_checkpoint(self.dec_block_1, x)
+
+            if self.deep_supervision:
+                x_ds_1 = checkpoint.checkpoint(self.out1, x)
+
             x = checkpoint.checkpoint(self.up_block_0, x)
             x = self.iterative_checkpoint(self.dec_block_0, x)
             x = checkpoint.checkpoint(self.out0, x)
@@ -135,4 +155,8 @@ class NoetherNet(nn.Module):
             x = self.dec_block_0(x)
             x = self.out0(x)            
 
-        return x
+        if self.deep_supervision:
+            return [x, x_ds_1, x_ds_2, x_ds_3, x_ds_4]
+        
+        else: 
+            return x
