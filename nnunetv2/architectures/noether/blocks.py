@@ -15,18 +15,20 @@ class NoetherBlock(nn.Module):
 
         kernel_size = [kernel_size, kernel_size, kernel_size]
 
+        eps = 0.1
+
         # Parameters for the first convolution
-        self.conv1_weights = nn.Parameter(torch.randn(in_channels, in_channels, *kernel_size))
+        self.conv1_weights = nn.Parameter(torch.randn(in_channels, in_channels, *kernel_size) * eps)
         self.conv1_bias = nn.Parameter(torch.zeros(in_channels))
 
         self.act1 = nn.ReLU()
 
         # Parameters for the second convolution
-        self.conv2_weights = nn.Parameter(torch.randn(in_channels * expansion, in_channels, 1, 1, 1))
+        self.conv2_weights = nn.Parameter(torch.randn(in_channels * expansion, in_channels, 1, 1, 1) * eps)
         self.conv2_bias = nn.Parameter(torch.zeros(in_channels * expansion))
 
         # Parameters for the third convolution
-        self.conv3_weights = nn.Parameter(torch.randn(out_channels, in_channels * expansion, 1, 1, 1))
+        self.conv3_weights = nn.Parameter(torch.randn(out_channels, in_channels * expansion, 1, 1, 1) * eps)
         self.conv3_bias = nn.Parameter(torch.zeros(out_channels))
 
         self.norm1 = nn.GroupNorm(in_channels, in_channels)
@@ -40,7 +42,8 @@ class NoetherBlock(nn.Module):
                                       kernel_size = 1)
 
     def forward(self, x, dummy_tensor=None):
-        sum_weights = self.conv2_weights.flatten().sum()
+        sum_weights = self.conv2_weights.mean()
+
         w1 = self.conv1_weights * (self.c2c1_scaler[:, None, None, None, None] * sum_weights)
         w3 = self.conv3_weights * (self.c2c3_scaler[:, None, None, None, None] * sum_weights)
 
@@ -69,7 +72,8 @@ class NoetherDownBlock(NoetherBlock):
                                       kernel_size = 1, stride = 2)
 
     def forward(self, x, dummy_tensor=None):
-        sum_weights = self.conv2_weights.flatten().sum()
+        sum_weights = self.conv2_weights.mean()
+
         w1 = self.conv1_weights * (self.c2c1_scaler[:, None, None, None, None] * sum_weights)
         w3 = self.conv3_weights * (self.c2c3_scaler[:, None, None, None, None] * sum_weights)
 
@@ -98,18 +102,20 @@ class NoetherUpBlock(nn.Module):
 
         kernel_size = [kernel_size, kernel_size, kernel_size]
 
+        eps = 0.1
+
         # Parameters for the first convolution
-        self.conv1_weights = nn.Parameter(torch.randn(in_channels, in_channels, *kernel_size))
+        self.conv1_weights = nn.Parameter(torch.randn(in_channels, in_channels, *kernel_size) * eps)
         self.conv1_bias = nn.Parameter(torch.zeros(in_channels))
 
         self.act1 = nn.ReLU()
 
         # Parameters for the second convolution
-        self.conv2_weights = nn.Parameter(torch.randn(in_channels * expansion, in_channels, 1, 1, 1))
+        self.conv2_weights = nn.Parameter(torch.randn(in_channels * expansion, in_channels, 1, 1, 1) * eps)
         self.conv2_bias = nn.Parameter(torch.zeros(in_channels * expansion))
 
         # Parameters for the third convolution
-        self.conv3_weights = nn.Parameter(torch.randn(out_channels, in_channels * expansion, 1, 1, 1))
+        self.conv3_weights = nn.Parameter(torch.randn(out_channels, in_channels * expansion, 1, 1, 1) * eps)
         self.conv3_bias = nn.Parameter(torch.zeros(out_channels))
 
         self.norm1 = nn.GroupNorm(in_channels, in_channels)
