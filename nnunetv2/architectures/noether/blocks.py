@@ -29,7 +29,7 @@ class NoetherBlock(nn.Module):
         self.conv3_weights = nn.Parameter(torch.randn(out_channels, in_channels * expansion, 1, 1, 1))
         self.conv3_bias = nn.Parameter(torch.zeros(out_channels))
 
-        self.norm1 = nn.GroupNorm(in_channels * expansion, in_channels * expansion)
+        self.norm1 = nn.GroupNorm(in_channels, in_channels)
 
         # Convolution info sharing parameters
         self.c2c1_scaler = nn.Parameter(torch.ones(in_channels))
@@ -46,9 +46,9 @@ class NoetherBlock(nn.Module):
 
         x_ = x
         x = F.conv3d(x, self.conv1_weights, self.conv1_bias, padding = self.kernel_size // 2)
-        x = self.act1(x)
-        x = F.conv3d(x, self.conv2_weights, self.conv2_bias)
         x = self.norm1(x)
+        x = F.conv3d(x, self.conv2_weights, self.conv2_bias)
+        x = self.act1(x)
         x = F.conv3d(x, self.conv3_weights, self.conv3_bias)
 
         if self.learn_residual:
@@ -76,9 +76,9 @@ class NoetherDownBlock(NoetherBlock):
         x_ = x
         x = F.conv3d(x, self.conv1_weights, self.conv1_bias, stride = 2, 
                      padding = self.kernel_size // 2)
-        x = self.act1(x)
-        x = F.conv3d(x, self.conv2_weights, self.conv2_bias)
         x = self.norm1(x)
+        x = F.conv3d(x, self.conv2_weights, self.conv2_bias)
+        x = self.act1(x)
         x = F.conv3d(x, self.conv3_weights, self.conv3_bias)
 
         if self.learn_residual:
@@ -88,7 +88,7 @@ class NoetherDownBlock(NoetherBlock):
     
 class NoetherUpBlock(nn.Module):
 
-    def __init__(self, in_channels, out_channels, kernel_size = 3, expansion = 3, learn_residual = False):
+    def __init__(self, in_channels, out_channels, kernel_size = 3, expansion = 3, learn_residual = True):
         super().__init__()
 
         self.in_channels = in_channels
@@ -112,7 +112,7 @@ class NoetherUpBlock(nn.Module):
         self.conv3_weights = nn.Parameter(torch.randn(out_channels, in_channels * expansion, 1, 1, 1))
         self.conv3_bias = nn.Parameter(torch.zeros(out_channels))
 
-        self.norm1 = nn.GroupNorm(in_channels * expansion, in_channels * expansion)
+        self.norm1 = nn.GroupNorm(in_channels, in_channels)
 
         # Convolution info sharing parameters
         self.c2c1_scaler = nn.Parameter(torch.ones(in_channels))
@@ -129,15 +129,15 @@ class NoetherUpBlock(nn.Module):
 
         x_ = x
         x = F.conv_transpose3d(x, self.conv1_weights, self.conv1_bias, stride = 2, 
-                               padding = self.kernel_size // 2)
-        x = self.act1(x)
-        x = F.conv3d(x, self.conv2_weights, self.conv2_bias)
+                               padding = self.kernel_size // 2, output_padding = 1)
         x = self.norm1(x)
+        x = F.conv3d(x, self.conv2_weights, self.conv2_bias)
+        x = self.act1(x)
         x = F.conv3d(x, self.conv3_weights, self.conv3_bias)
 
         if self.learn_residual:
             x_ = self.res_conv(x_)
-            #x_ = F.pad(x_, (1,0,1,0,1,0))
+            x_ = F.pad(x_, (1,0,1,0,1,0))
             x += x_
 
         return x

@@ -51,28 +51,28 @@ class NoetherNet(nn.Module):
             for i in range(block_counts[4])]
         )
 
-        self.up_block_3 = NoetherBlock(num_channels[4], num_channels[3])
+        self.up_block_3 = NoetherUpBlock(num_channels[4], num_channels[3])
 
         self.dec_block_3 = nn.Sequential(*[
             NoetherBlock(num_channels[3], num_channels[3])
             for i in range(block_counts[5])]
         )
 
-        self.up_block_2 = NoetherBlock(num_channels[3], num_channels[2])
+        self.up_block_2 = NoetherUpBlock(num_channels[3], num_channels[2])
 
         self.dec_block_2 = nn.Sequential(*[
             NoetherBlock(num_channels[2], num_channels[2])
             for i in range(block_counts[6])]
         )
 
-        self.up_block_1 = NoetherBlock(num_channels[2], num_channels[1])
+        self.up_block_1 = NoetherUpBlock(num_channels[2], num_channels[1])
 
         self.dec_block_1 = nn.Sequential(*[
             NoetherBlock(num_channels[1], num_channels[1])
             for i in range(block_counts[7])]
         )
 
-        self.up_block_0 = NoetherBlock(num_channels[1], num_channels[0])
+        self.up_block_0 = NoetherUpBlock(num_channels[1], num_channels[0])
 
         self.dec_block_0 = nn.Sequential(*[
             NoetherBlock(num_channels[0], num_channels[0])
