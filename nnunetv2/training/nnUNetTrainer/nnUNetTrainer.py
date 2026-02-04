@@ -44,6 +44,7 @@ from torch import GradScaler
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from nnunetv2.architectures.mednext.create_efficient_mednext import create_efficient_mednext
+from nnunetv2.architectures.noether.nnet import NoetherNet
 from nnunetv2.configuration import ANISO_THRESHOLD, default_num_processes
 from nnunetv2.evaluation.evaluate_predictions import compute_metrics_on_folder
 from nnunetv2.inference.export_prediction import export_prediction_from_logits, resample_and_save
@@ -1400,7 +1401,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         super().__init__(plans, configuration, fold, dataset_json, device)
 
         self.initial_lr = 1e-2
-        self.num_epochs = 100
+        self.num_epochs = 500
         self.save_every = 2 # We want to save every 2 epochs
 
         #wandb.login(key=os.environ["WANDB_API_KEY"])
@@ -1419,6 +1420,45 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
                                         num_classes = num_output_channels, 
                                         model_id = "S",
                                         deep_supervision = enable_deep_supervision)
+    
+    def on_epoch_end(self):
+        super().on_epoch_end()
+
+        pseudo_dice = self.logger.my_fantastic_logging['dice_per_class_or_region'][-1]
+        log_dict = {f"dice_class_{i}": j for i,j in enumerate(pseudo_dice)}
+        log_dict["epoch"] = self.current_epoch
+        log_dict["lr"] = self.optimizer.param_groups[0]["lr"]
+
+        wandb.log(log_dict)
+    
+    def set_deep_supervision_enabled(self, enabled: bool):
+        self.enable_deep_supervision = enabled
+
+class NoetherTrainer(nnUNetTrainer):
+
+    def __init__(self, plans, configuration, fold, dataset_json, device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, device)
+
+        self.initial_lr = 1e-2
+        self.num_epochs = 10
+        self.save_every = 2 # We want to save every 2 epochs
+
+        #wandb.login(key=os.environ["WANDB_API_KEY"])
+        wandb.init(project = "Noether_Small_PROSTATE", 
+                   name = f"PROSTATE_k=3_fold={self.fold}")
+        
+        self.set_deep_supervision_enabled(False)
+
+    @staticmethod
+    def build_network_architecture(architecture_class_name: str,
+                                   arch_init_kwargs: dict,
+                                   arch_init_kwargs_req_import: Union[List[str], Tuple[str, ...]],
+                                   num_input_channels: int,
+                                   num_output_channels: int,
+                                   enable_deep_supervision: bool = True) -> nn.Module:
+        
+        return NoetherNet(num_input_channels, 32, num_output_channels, 
+                          deep_supervision = enable_deep_supervision)
     
     def on_epoch_end(self):
         super().on_epoch_end()

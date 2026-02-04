@@ -470,40 +470,5 @@ class EfficientMedNeXt(nn.Module):
             return x
 
 
-if __name__ == "__main__":
 
-    network = EfficientMedNeXt(
-            in_channels = 1, 
-            n_channels = 32,
-            n_classes = 13,
-            kernel_sizes=[1,3,5],                     # Can test kernel_size
-            strides=[1,1,1],
-            deep_supervision=True,             # Can be used to test deep supervision
-            do_res=True,                      # Can be used to individually test residual connection
-            do_res_up_down = True,
-            # block_counts = [2,2,2,2,2,2,2,2,2],
-            block_counts = [3,4,8,8,8,8,8,4,3],
-            checkpoint_style = None,
-            dim = '2d',
-            grn=True
-            
-        ).cuda()
-    
 
-    def count_parameters(model):
-        return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-    print(count_parameters(network))
-
-    from fvcore.nn import FlopCountAnalysis
-    from fvcore.nn import parameter_count_table
-
-    # model = ResTranUnet(img_size=128, in_channels=1, num_classes=14, dummy=False).cuda()
-    x = torch.zeros((1,1,64,64,64), requires_grad=False).cuda()
-    flops = FlopCountAnalysis(network, x)
-    print(flops.total())
-    
-    with torch.no_grad():
-        print(network)
-        x = torch.zeros((1, 1, 128, 128, 128)).cuda()
-        print(network(x)[0].shape)

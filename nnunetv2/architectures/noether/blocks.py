@@ -2,277 +2,162 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class NoetherBlock(nn.Module):
 
-class MedNeXtBlock(nn.Module):
-
-    def __init__(self, 
-                in_channels:int, 
-                out_channels:int, 
-                exp_r:int=4, 
-                kernel_size:int=7, 
-                do_res:int=True,
-                norm_type:str = 'group',
-                n_groups: int | None = None,
-                dim = '3d',
-                grn = False
-                ):
-
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int = 3,
+                 expansion: int = 3, learn_residual: bool = True):
         super().__init__()
 
-        self.do_res = do_res
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.learn_residual = learn_residual
+        self.kernel_size = kernel_size
 
-        assert dim in ['2d', '3d']
-        self.dim = dim
-        if self.dim == '2d':
-            conv = nn.Conv2d
-        elif self.dim == '3d':
-            conv = nn.Conv3d
-            
-        # First convolution layer with DepthWise Convolutions
-        self.conv1 = conv(
-            in_channels = in_channels,
-            out_channels = in_channels,
-            kernel_size = kernel_size,
-            stride = 1,
-            padding = kernel_size//2,
-            groups = in_channels if n_groups is None else n_groups,
-        )
+        kernel_size = [kernel_size, kernel_size, kernel_size]
 
-        # Normalization Layer. GroupNorm is used by default.
-        if norm_type=='group':
-            self.norm = nn.GroupNorm(
-                num_groups=in_channels, 
-                num_channels=in_channels
-                )
-        elif norm_type=='layer':
-            self.norm = LayerNorm(
-                normalized_shape=in_channels, 
-                data_format='channels_first'
-                )
+        # Parameters for the first convolution
+        self.conv1_weights = nn.Parameter(torch.randn(in_channels, in_channels, *kernel_size))
+        self.conv1_bias = nn.Parameter(torch.zeros(in_channels))
 
-        # Second convolution (Expansion) layer with Conv3D 1x1x1
-        self.conv2 = conv(
-            in_channels = in_channels,
-            out_channels = exp_r*in_channels,
-            kernel_size = 1,
-            stride = 1,
-            padding = 0
-        )
-        
-        # GeLU activations
-        self.act = nn.GELU()
-        
-        # Third convolution (Compression) layer with Conv3D 1x1x1
-        self.conv3 = conv(
-            in_channels = exp_r*in_channels,
-            out_channels = out_channels,
-            kernel_size = 1,
-            stride = 1,
-            padding = 0
-        )
-        
-        if self.do_res and (self.in_channels != self.out_channels):
-            self.res_conv = conv(
-                in_channels = in_channels,
-                out_channels = out_channels,
-                kernel_size = 1,
-                stride = 1,
-                padding = 0
-            )
+        self.act1 = nn.ReLU()
 
-        self.grn = grn
-        if grn:
-            if dim == '3d':
-                self.grn_beta = nn.Parameter(torch.zeros(1,exp_r*in_channels,1,1,1), requires_grad=True)
-                self.grn_gamma = nn.Parameter(torch.zeros(1,exp_r*in_channels,1,1,1), requires_grad=True)
-            elif dim == '2d':
-                self.grn_beta = nn.Parameter(torch.zeros(1,exp_r*in_channels,1,1), requires_grad=True)
-                self.grn_gamma = nn.Parameter(torch.zeros(1,exp_r*in_channels,1,1), requires_grad=True)
+        # Parameters for the second convolution
+        self.conv2_weights = nn.Parameter(torch.randn(in_channels * expansion, in_channels, 1, 1, 1))
+        self.conv2_bias = nn.Parameter(torch.zeros(in_channels * expansion))
 
- 
+        # Parameters for the third convolution
+        self.conv3_weights = nn.Parameter(torch.randn(out_channels, in_channels * expansion, 1, 1, 1))
+        self.conv3_bias = nn.Parameter(torch.zeros(out_channels))
+
+        self.norm1 = nn.GroupNorm(in_channels * expansion, in_channels * expansion)
+
+        # Convolution info sharing parameters
+        self.c2c1_scaler = nn.Parameter(torch.ones(in_channels))
+        self.c2c3_scaler = nn.Parameter(torch.ones(out_channels))
+
+        if self.learn_residual and self.in_channels != self.out_channels:
+            self.res_conv = nn.Conv3d(self.in_channels, self.out_channels, 
+                                      kernel_size = 1)
+
     def forward(self, x, dummy_tensor=None):
-        
-        x1 = x
-        x1 = self.conv1(x1)
-        x1 = self.act(self.conv2(self.norm(x1)))
-        if self.grn:
-            # gamma, beta: learnable affine transform parameters
-            # X: input of shape (N,C,H,W,D)
-            if self.dim == '3d':
-                gx = torch.norm(x1, p=2, dim=(-3, -2, -1), keepdim=True)
-            elif self.dim == '2d':
-                gx = torch.norm(x1, p=2, dim=(-2, -1), keepdim=True)
-            nx = gx / (gx.mean(dim=1, keepdim=True)+1e-6)
-            x1 = self.grn_gamma * (x1 * nx) + self.grn_beta + x1
-        x1 = self.conv3(x1)
-        if self.do_res:
+        sum_weights = self.conv2_weights.flatten().sum()
+        self.conv1_weights *= self.c2c1_scaler[:, None, None, None, None] * sum_weights
+        self.conv3_weights *= self.c2c3_scaler[:, None, None, None, None] * sum_weights
+
+        x_ = x
+        x = F.conv3d(x, self.conv1_weights, self.conv1_bias, padding = self.kernel_size // 2)
+        x = self.act1(x)
+        x = F.conv3d(x, self.conv2_weights, self.conv2_bias)
+        x = self.norm1(x)
+        x = F.conv3d(x, self.conv3_weights, self.conv3_bias)
+
+        if self.learn_residual:
             if self.in_channels != self.out_channels:
-                x = self.res_conv(x)
-            x1 = x + x1  
-        return x1
+                x_ = self.res_conv(x_)
 
+            x += x_
 
-class MedNeXtDownBlock(MedNeXtBlock):
+        return x
+    
+class NoetherDownBlock(NoetherBlock):
 
-    def __init__(self, in_channels, out_channels, exp_r=4, kernel_size=7, 
-                do_res=False, norm_type = 'group', dim='3d', grn=False):
+    def __init__(self, in_channels, out_channels, kernel_size = 3, expansion = 3, learn_residual = False):
+        super().__init__(in_channels, out_channels, kernel_size, expansion, learn_residual)
 
-        super().__init__(in_channels, out_channels, exp_r, kernel_size, 
-                        do_res = False, norm_type = norm_type, dim=dim,
-                        grn=grn)
-
-        if dim == '2d':
-            conv = nn.Conv2d
-        elif dim == '3d':
-            conv = nn.Conv3d
-        self.resample_do_res = do_res
-        if do_res:
-            self.res_conv = conv(
-                in_channels = in_channels,
-                out_channels = out_channels,
-                kernel_size = 1,
-                stride = 2
-            )
-
-        self.conv1 = conv(
-            in_channels = in_channels,
-            out_channels = in_channels,
-            kernel_size = kernel_size,
-            stride = 2,
-            padding = kernel_size//2,
-            groups = in_channels,
-        )
+        if learn_residual:
+            self.res_conv = nn.Conv3d(self.in_channels, self.out_channels, 
+                                      kernel_size = 1, stride = 2)
 
     def forward(self, x, dummy_tensor=None):
-        
-        x1 = super().forward(x)
-        
-        if self.resample_do_res:
-            res = self.res_conv(x)
-            x1 = x1 + res
+        sum_weights = self.conv2_weights.flatten().sum()
+        self.conv1_weights *= self.c2c1_scaler[:, None, None, None, None] * sum_weights
+        self.conv3_weights *= self.c2c3_scaler[:, None, None, None, None] * sum_weights
 
-        return x1
+        x_ = x
+        x = F.conv3d(x, self.conv1_weights, self.conv1_bias, stride = 2, 
+                     padding = self.kernel_size // 2)
+        x = self.act1(x)
+        x = F.conv3d(x, self.conv2_weights, self.conv2_bias)
+        x = self.norm1(x)
+        x = F.conv3d(x, self.conv3_weights, self.conv3_bias)
 
+        if self.learn_residual:
+            x += self.res_conv(x_)
 
-class MedNeXtUpBlock(MedNeXtBlock):
+        return x
+    
+class NoetherUpBlock(nn.Module):
 
-    def __init__(self, in_channels, out_channels, exp_r=4, kernel_size=7, 
-                do_res=False, norm_type = 'group', dim='3d', grn = False):
-        super().__init__(in_channels, out_channels, exp_r, kernel_size,
-                         do_res=False, norm_type = norm_type, dim=dim,
-                         grn=grn)
+    def __init__(self, in_channels, out_channels, kernel_size = 3, expansion = 3, learn_residual = False):
+        super().__init__()
 
-        self.resample_do_res = do_res
-        
-        self.dim = dim
-        if dim == '2d':
-            conv = nn.ConvTranspose2d
-        elif dim == '3d':
-            conv = nn.ConvTranspose3d
-        if do_res:            
-            self.res_conv = conv(
-                in_channels = in_channels,
-                out_channels = out_channels,
-                kernel_size = 1,
-                stride = 2
-                )
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.learn_residual = learn_residual
+        self.kernel_size = kernel_size
 
-        self.conv1 = conv(
-            in_channels = in_channels,
-            out_channels = in_channels,
-            kernel_size = kernel_size,
-            stride = 2,
-            padding = kernel_size//2,
-            groups = in_channels,
-        )
+        kernel_size = [kernel_size, kernel_size, kernel_size]
 
+        # Parameters for the first convolution
+        self.conv1_weights = nn.Parameter(torch.randn(in_channels, in_channels, *kernel_size))
+        self.conv1_bias = nn.Parameter(torch.zeros(in_channels))
+
+        self.act1 = nn.ReLU()
+
+        # Parameters for the second convolution
+        self.conv2_weights = nn.Parameter(torch.randn(in_channels * expansion, in_channels, 1, 1, 1))
+        self.conv2_bias = nn.Parameter(torch.zeros(in_channels * expansion))
+
+        # Parameters for the third convolution
+        self.conv3_weights = nn.Parameter(torch.randn(out_channels, in_channels * expansion, 1, 1, 1))
+        self.conv3_bias = nn.Parameter(torch.zeros(out_channels))
+
+        self.norm1 = nn.GroupNorm(in_channels * expansion, in_channels * expansion)
+
+        # Convolution info sharing parameters
+        self.c2c1_scaler = nn.Parameter(torch.ones(in_channels))
+        self.c2c3_scaler = nn.Parameter(torch.ones(out_channels))
+
+        if learn_residual:
+            self.res_conv = nn.ConvTranspose3d(self.in_channels, self.out_channels,
+                                               kernel_size = 1, stride = 2)
 
     def forward(self, x, dummy_tensor=None):
-        
-        x1 = super().forward(x)
-        # Asymmetry but necessary to match shape
-        
-        if self.dim == '2d':
-            x1 = torch.nn.functional.pad(x1, (1,0,1,0))
-        elif self.dim == '3d':
-            x1 = torch.nn.functional.pad(x1, (1,0,1,0,1,0))
-        
-        if self.resample_do_res:
-            res = self.res_conv(x)
-            if self.dim == '2d':
-                res = torch.nn.functional.pad(res, (1,0,1,0))
-            elif self.dim == '3d':
-                res = torch.nn.functional.pad(res, (1,0,1,0,1,0))
-            x1 = x1 + res
+        sum_weights = self.conv2_weights.flatten().sum()
+        self.conv1_weights *= self.c2c1_scaler[:, None, None, None, None] * sum_weights
+        self.conv3_weights *= self.c2c3_scaler[:, None, None, None, None] * sum_weights
 
-        return x1
+        x_ = x
+        x = F.conv_transpose3d(x, self.conv1_weights, self.conv1_bias, stride = 2, 
+                               padding = self.kernel_size // 2)
+        x = self.act1(x)
+        x = F.conv3d(x, self.conv2_weights, self.conv2_bias)
+        x = self.norm1(x)
+        x = F.conv3d(x, self.conv3_weights, self.conv3_bias)
 
+        if self.learn_residual:
+            x_ = self.res_conv(x_)
+            #x_ = F.pad(x_, (1,0,1,0,1,0))
+            x += x_
+
+        return x
 
 class OutBlock(nn.Module):
 
-    def __init__(self, in_channels, n_classes, dim):
+    def __init__(self, in_channels, n_classes):
         super().__init__()
-        
-        if dim == '2d':
-            conv = nn.ConvTranspose2d
-        elif dim == '3d':
-            conv = nn.ConvTranspose3d
-        self.conv_out = conv(in_channels, n_classes, kernel_size=1)
+
+        self.conv_out = nn.ConvTranspose3d(in_channels, n_classes, kernel_size=1)
     
     def forward(self, x, dummy_tensor=None): 
-        return self.conv_out(x)
-
-
-class LayerNorm(nn.Module):
-    """ LayerNorm that supports two data formats: channels_last (default) or channels_first. 
-    The ordering of the dimensions in the inputs. channels_last corresponds to inputs with 
-    shape (batch_size, height, width, channels) while channels_first corresponds to inputs 
-    with shape (batch_size, channels, height, width).
-    """
-    def __init__(self, normalized_shape, eps=1e-5, data_format="channels_last"):
-        super().__init__()
-        self.weight = nn.Parameter(torch.ones(normalized_shape))        # beta
-        self.bias = nn.Parameter(torch.zeros(normalized_shape))         # gamma
-        self.eps = eps
-        self.data_format = data_format
-        if self.data_format not in ["channels_last", "channels_first"]:
-            raise NotImplementedError 
-        self.normalized_shape = (normalized_shape, )
+        return self.conv_out(x)   
     
-    def forward(self, x, dummy_tensor=False):
-        if self.data_format == "channels_last":
-            return F.layer_norm(x, self.normalized_shape, self.weight, self.bias, self.eps)
-        elif self.data_format == "channels_first":
-            u = x.mean(1, keepdim=True)
-            s = (x - u).pow(2).mean(1, keepdim=True)
-            x = (x - u) / torch.sqrt(s + self.eps)
-            x = self.weight[:, None, None, None] * x + self.bias[:, None, None, None]
-            return x
-
-         
 if __name__ == "__main__":
+    
+    network = NoetherUpBlock(in_channels = 4, out_channels = 4, learn_residual = True)
+    network.cuda()
 
-
-    # network = nnUNeXtBlock(in_channels=12, out_channels=12, do_res=False).cuda()
-
-    # with torch.no_grad():
-    #     print(network)
-    #     x = torch.zeros((2, 12, 8, 8, 8)).cuda()
-    #     print(network(x).shape)
-
-    # network = DownsampleBlock(in_channels=12, out_channels=24, do_res=False)
-
-    # with torch.no_grad():
-    #     print(network)
-    #     x = torch.zeros((2, 12, 128, 128, 128))
-    #     print(network(x).shape)
-
-    network = MedNeXtBlock(in_channels=12, out_channels=12, do_res=True, grn=True, norm_type='group').cuda()
-    # network = LayerNorm(normalized_shape=12, data_format='channels_last').cuda()
-    # network.eval()
     with torch.no_grad():
-        print(network)
-        x = torch.zeros((2, 12, 64, 64, 64)).cuda()
-        print(network(x).shape)
+        x = torch.randn((1, 4, 8, 8, 8)).cuda()
+        print(x)
+        print(network(x))

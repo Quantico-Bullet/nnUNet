@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class MedNeXtBlock(nn.Module):
 
     def __init__(self, 
@@ -208,7 +207,6 @@ class MedNeXtUpBlock(MedNeXtBlock):
             x1 = x1 + res
 
         return x1
-
 
 class OutBlock(nn.Module):
 
