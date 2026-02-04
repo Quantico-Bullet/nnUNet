@@ -41,15 +41,15 @@ class NoetherBlock(nn.Module):
 
     def forward(self, x, dummy_tensor=None):
         sum_weights = self.conv2_weights.flatten().sum()
-        self.conv1_weights *= self.c2c1_scaler[:, None, None, None, None] * sum_weights
-        self.conv3_weights *= self.c2c3_scaler[:, None, None, None, None] * sum_weights
+        w1 = self.conv1_weights * (self.c2c1_scaler[:, None, None, None, None] * sum_weights)
+        w3 = self.conv3_weights * (self.c2c3_scaler[:, None, None, None, None] * sum_weights)
 
         x_ = x
-        x = F.conv3d(x, self.conv1_weights, self.conv1_bias, padding = self.kernel_size // 2)
+        x = F.conv3d(x, w1, self.conv1_bias, padding = self.kernel_size // 2)
         x = self.norm1(x)
         x = F.conv3d(x, self.conv2_weights, self.conv2_bias)
         x = self.act1(x)
-        x = F.conv3d(x, self.conv3_weights, self.conv3_bias)
+        x = F.conv3d(x, w3, self.conv3_bias)
 
         if self.learn_residual:
             if self.in_channels != self.out_channels:
@@ -70,16 +70,16 @@ class NoetherDownBlock(NoetherBlock):
 
     def forward(self, x, dummy_tensor=None):
         sum_weights = self.conv2_weights.flatten().sum()
-        self.conv1_weights *= self.c2c1_scaler[:, None, None, None, None] * sum_weights
-        self.conv3_weights *= self.c2c3_scaler[:, None, None, None, None] * sum_weights
+        w1 = self.conv1_weights * (self.c2c1_scaler[:, None, None, None, None] * sum_weights)
+        w3 = self.conv3_weights * (self.c2c3_scaler[:, None, None, None, None] * sum_weights)
 
         x_ = x
-        x = F.conv3d(x, self.conv1_weights, self.conv1_bias, stride = 2, 
+        x = F.conv3d(x, w1, self.conv1_bias, stride = 2, 
                      padding = self.kernel_size // 2)
         x = self.norm1(x)
         x = F.conv3d(x, self.conv2_weights, self.conv2_bias)
         x = self.act1(x)
-        x = F.conv3d(x, self.conv3_weights, self.conv3_bias)
+        x = F.conv3d(x, w3, self.conv3_bias)
 
         if self.learn_residual:
             x += self.res_conv(x_)
