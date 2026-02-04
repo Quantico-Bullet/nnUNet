@@ -1442,12 +1442,11 @@ class NoetherTrainer(nnUNetTrainer):
         self.initial_lr = 1e-2
         self.num_epochs = 10
         self.save_every = 2 # We want to save every 2 epochs
+        self.enable_deep_supervision = False
 
         #wandb.login(key=os.environ["WANDB_API_KEY"])
         wandb.init(project = "Noether_Small_PROSTATE", 
                    name = f"PROSTATE_k=3_fold={self.fold}")
-        
-        self.set_deep_supervision_enabled(False)
 
     @staticmethod
     def build_network_architecture(architecture_class_name: str,
@@ -1471,4 +1470,4 @@ class NoetherTrainer(nnUNetTrainer):
         wandb.log(log_dict)
     
     def set_deep_supervision_enabled(self, enabled: bool):
-        self.enable_deep_supervision = enabled
+        self.enable_deep_supervision = False
