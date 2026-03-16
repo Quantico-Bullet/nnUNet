@@ -14,7 +14,10 @@ class MultiDilationDepthwiseConv3D(nn.Module):
 
         self.dwconvs = nn.ModuleList([
             nn.Sequential(
-                conv(self.in_channels, self.in_channels, modified_kernel_sizes[i], strides[i], kernel_sizes[i] // 2, dilation=self.dilations[i], groups=self.in_channels, bias=False),
+                conv(self.in_channels, self.in_channels, modified_kernel_sizes[i], 
+                     strides[i], kernel_sizes[i] // 2, dilation=self.dilations[i], 
+                     groups=self.in_channels, bias=False,
+                    )
             )
             for i in range(len(modified_kernel_sizes))
         ])
@@ -43,7 +46,8 @@ class EfficientMedNeXtBlock(nn.Module):
                 norm_type:str = 'group',
                 dim = '3d',
                 conv=None,
-                grn = False
+                grn = False,
+                is_upsampling = False
                 ):
 
         super().__init__()
@@ -76,7 +80,7 @@ class EfficientMedNeXtBlock(nn.Module):
                 )
         
         # Threshold
-        self.act = nn.LeakyReLU()
+        self.act = nn.GELU()
         
         # Third convolution (Compression) layer with Conv3D 1x1x1
         self.conv3 = conv(
@@ -84,7 +88,7 @@ class EfficientMedNeXtBlock(nn.Module):
             out_channels = out_channels,
             kernel_size = 1,
             stride = 1,
-            padding = 0
+            padding = 0,
         )
 
         
@@ -181,24 +185,29 @@ class EfficientMedNeXtUpBlock(EfficientMedNeXtBlock):
                 in_channels = in_channels,
                 out_channels = out_channels,
                 kernel_size = 1,
-                stride = 2
+                stride = 2,
+                output_padding = 1
                 )
 
     def forward(self, x, dummy_tensor=None):
         
         x1 = super().forward(x)
         # Asymmetry but necessary to match shape
+        """
         if self.dim == '2d':
             x1 = torch.nn.functional.pad(x1, (1,0,1,0))
         elif self.dim == '3d':
             x1 = torch.nn.functional.pad(x1, (1,0,1,0,1,0))
-        
+        """
+
         if self.resample_do_res:
             res = self.res_conv(x)
+            """
             if self.dim == '2d':
                 res = torch.nn.functional.pad(res, (1,0,1,0))
             elif self.dim == '3d':
                 res = torch.nn.functional.pad(res, (1,0,1,0,1,0))
+            """
             x1 = x1 + res
 
         return x1
