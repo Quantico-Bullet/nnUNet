@@ -1,4 +1,3 @@
-from typing import List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,10 +13,7 @@ class MultiDilationDepthwiseConv3D(nn.Module):
 
         self.dwconvs = nn.ModuleList([
             nn.Sequential(
-                conv(self.in_channels, self.in_channels, modified_kernel_sizes[i], 
-                     strides[i], kernel_sizes[i] // 2, dilation=self.dilations[i], 
-                     groups=self.in_channels, bias=False,
-                    )
+                conv(self.in_channels, self.in_channels, modified_kernel_sizes[i], strides[i], kernel_sizes[i] // 2, dilation=self.dilations[i], groups=self.in_channels, bias=False),
             )
             for i in range(len(modified_kernel_sizes))
         ])
@@ -46,8 +42,7 @@ class EfficientMedNeXtBlock(nn.Module):
                 norm_type:str = 'group',
                 dim = '3d',
                 conv=None,
-                grn = False,
-                is_upsampling = False
+                grn = False
                 ):
 
         super().__init__()
@@ -79,7 +74,7 @@ class EfficientMedNeXtBlock(nn.Module):
                 data_format='channels_first'
                 )
         
-        # Threshold
+        # GeLU activations
         self.act = nn.GELU()
         
         # Third convolution (Compression) layer with Conv3D 1x1x1
@@ -88,9 +83,8 @@ class EfficientMedNeXtBlock(nn.Module):
             out_channels = out_channels,
             kernel_size = 1,
             stride = 1,
-            padding = 0,
+            padding = 0
         )
-
         
         if self.do_res and (self.in_channels != self.out_channels):
             self.res_conv = conv(
@@ -185,28 +179,24 @@ class EfficientMedNeXtUpBlock(EfficientMedNeXtBlock):
                 in_channels = in_channels,
                 out_channels = out_channels,
                 kernel_size = 1,
-                stride = 2,
-                output_padding = 1
+                stride = 2
                 )
 
     def forward(self, x, dummy_tensor=None):
         
         x1 = super().forward(x)
         # Asymmetry but necessary to match shape
-
         if self.dim == '2d':
             x1 = torch.nn.functional.pad(x1, (1,0,1,0))
         elif self.dim == '3d':
             x1 = torch.nn.functional.pad(x1, (1,0,1,0,1,0))
-
+        
         if self.resample_do_res:
             res = self.res_conv(x)
-     
             if self.dim == '2d':
                 res = torch.nn.functional.pad(res, (1,0,1,0))
             elif self.dim == '3d':
                 res = torch.nn.functional.pad(res, (1,0,1,0,1,0))
-
             x1 = x1 + res
 
         return x1
@@ -252,28 +242,6 @@ class LayerNorm(nn.Module):
             x = (x - u) / torch.sqrt(s + self.eps)
             x = self.weight[:, None, None, None] * x + self.bias[:, None, None, None]
             return x
-        
-class Conv3dModifier(nn.Module):
-
-    def __init__(self, in1_features: int, in2_features, out_features: int):
-        super().__init__()
-
-        self.fc1 = nn.Bilinear(in1_features, in2_features, (in1_features + in2_features) * 2)
-        self.fc2 = nn.Linear((in1_features + in2_features) * 2, (in2_features + in2_features) * 2)
-        self.fc3 = nn.Linear((in1_features + in2_features) * 2, out_features)
-
-    def forward(self, x, kern1: nn.Conv3d, kern2: nn.Conv3d):
-        kern1_weights = kern1.weight.clone().detach().flatten()
-        kern2_weights = kern2.weight.clone().detach().flatten()
-
-        
-        out = F.relu(self.fc1(kern1_weights, kern2_weights))
-        out = self.fc2(out)
-        out = F.relu(self.fc3(out))
-
-        x = F.conv3d(x, out.unflatten(kern2.weight.size))
-
-        return x
          
 if __name__ == "__main__":
 
