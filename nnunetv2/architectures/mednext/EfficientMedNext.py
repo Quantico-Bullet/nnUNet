@@ -379,7 +379,6 @@ class EfficientMedNeXt(nn.Module):
                 x_ds_4 = checkpoint.checkpoint(self.out_4, x, self.dummy_tensor)
 
             x_up_3 = checkpoint.checkpoint(self.up_3, x, self.dummy_tensor)
-            print(x_res_3.shape, " " , x_up_3.shape)
             dec_x = x_res_3 + x_up_3 
             x = self.iterative_checkpoint(self.dec_block_3, dec_x)
             if self.do_ds:
