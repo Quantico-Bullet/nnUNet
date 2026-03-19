@@ -193,21 +193,20 @@ class EfficientMedNeXtUpBlock(EfficientMedNeXtBlock):
         
         x1 = super().forward(x)
         # Asymmetry but necessary to match shape
-        """
+
         if self.dim == '2d':
             x1 = torch.nn.functional.pad(x1, (1,0,1,0))
         elif self.dim == '3d':
             x1 = torch.nn.functional.pad(x1, (1,0,1,0,1,0))
-        """
 
         if self.resample_do_res:
             res = self.res_conv(x)
-            """
+     
             if self.dim == '2d':
                 res = torch.nn.functional.pad(res, (1,0,1,0))
             elif self.dim == '3d':
                 res = torch.nn.functional.pad(res, (1,0,1,0,1,0))
-            """
+
             x1 = x1 + res
 
         return x1
