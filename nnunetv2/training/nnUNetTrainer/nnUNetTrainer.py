@@ -634,7 +634,7 @@ class nnUNetTrainer(object):
 
         # we use the patch size to determine whether we need 2D or 3D dataloaders. We also use it to determine whether
         # we need to use dummy 2D augmentation (in case of 3D training) and what our initial patch size should be
-        self.custom_patch_size = [96, 96, 96]#self.configuration_manager.patch_size
+        self.custom_patch_size = [128, 128, 96]#self.configuration_manager.patch_size
 
 
         # needed for deep supervision: how much do we need to downscale the segmentation targets for the different
@@ -1420,12 +1420,13 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
                                         num_classes = num_output_channels, 
                                         model_id = "S",
                                         deep_supervision = enable_deep_supervision)
-    
+    """
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.network.parameters(), self.initial_lr)
         lr_scheduler = CosineAnnealingLR(optimizer, self.num_epochs)
         return optimizer, lr_scheduler
-    
+    """
+
     def on_epoch_end(self):
         super().on_epoch_end()
 
@@ -1437,4 +1438,4 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         wandb.log(log_dict)
     
     def set_deep_supervision_enabled(self, enabled: bool):
-        self.enable_deep_supervision = enabled
+        self.enable_deep_supervision = True
