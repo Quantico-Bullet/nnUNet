@@ -1400,7 +1400,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
     def __init__(self, plans, configuration, fold, dataset_json, device = torch.device('cuda')):
         super().__init__(plans, configuration, fold, dataset_json, device)
 
-        self.initial_lr = 1e-2
+        self.initial_lr = 0.9e-2
         self.num_epochs = 100
         self.save_every = 5 # We want to save every 2 epochs
 
@@ -1420,12 +1420,13 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
                                         num_classes = num_output_channels, 
                                         model_id = "S",
                                         deep_supervision = enable_deep_supervision)
-    """
+
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.network.parameters(), self.initial_lr)
+        optimizer = torch.optim.SGD(self.network.parameters(), self.initial_lr, 
+                                    weight_decay=self.weight_decay, momentum=0.99, 
+                                    nesterov=True)
         lr_scheduler = CosineAnnealingLR(optimizer, self.num_epochs)
         return optimizer, lr_scheduler
-    """
 
     def on_epoch_end(self):
         super().on_epoch_end()
