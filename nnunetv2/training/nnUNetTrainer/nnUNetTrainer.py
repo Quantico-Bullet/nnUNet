@@ -1401,7 +1401,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         super().__init__(plans, configuration, fold, dataset_json, device)
 
         self.initial_lr = 0.9e-2
-        self.num_epochs = 100
+        self.num_epochs = 50
         self.save_every = 5 # We want to save every 2 epochs
 
         #wandb.login(key=os.environ["WANDB_API_KEY"])
