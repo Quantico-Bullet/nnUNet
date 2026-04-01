@@ -1422,7 +1422,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
                                         model_id = "S",
                                         deep_supervision = enable_deep_supervision)
         
-        model = quantize_(model, Int8WeightOnlyConfig(group_size = 128))
+        quantize_(model, Int8WeightOnlyConfig(group_size = 128))
 
         return model
 
