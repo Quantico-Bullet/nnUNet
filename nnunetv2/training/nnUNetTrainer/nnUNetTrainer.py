@@ -43,6 +43,7 @@ from torch.cuda import device_count
 from torch import GradScaler
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from torchao.quantization import quantize_, Int8WeightOnlyConfig
 
 from nnunetv2.architectures.mednext.create_efficient_mednext import create_efficient_mednext
 from nnunetv2.configuration import ANISO_THRESHOLD, default_num_processes
@@ -1416,10 +1417,14 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
                                    num_output_channels: int,
                                    enable_deep_supervision: bool = True) -> nn.Module:
         
-        return create_efficient_mednext(num_input_channels = num_input_channels, 
+        model = create_efficient_mednext(num_input_channels = num_input_channels, 
                                         num_classes = num_output_channels, 
                                         model_id = "S",
                                         deep_supervision = enable_deep_supervision)
+        
+        model = quantize_(model, Int8WeightOnlyConfig(group_size = 128))
+
+        return model
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.network.parameters(), self.initial_lr, 
