@@ -10,19 +10,19 @@ class EfficientMedNeXt(nn.Module):
         in_channels: int, 
         n_channels: int,
         n_classes: int, 
-        kernel_sizes = [1,3,5],                      # Ofcourse can test kernel_size
+        kernel_sizes = [1,3,5],                      # Of course can test kernel_size
         strides=[1,1,1],
         enc_kernel_sizes: int = [1,3,5],
         dec_kernel_sizes: int = [1,3,5],
         uniform_dec_channels = None,
-        deep_supervision: bool = True,      #False       # Can be used to test deep supervision
+        deep_supervision: bool = True,              #False, Can be used to test deep supervision
         do_res: bool = False,                       # Can be used to individually test residual connection
-        do_res_up_down: bool = False,             # Additional 'res' connection on up and down convs
-        checkpoint_style: bool = None,            # Either inside block or outside block
-        block_counts: list = [2,2,2,2,2,2,2,2,2], # Can be used to test staging ratio: 
-                                            # [3,3,9,3] in Swin as opposed to [2,2,2,2,2] in nnUNet
+        do_res_up_down: bool = False,               # Additional 'res' connection on up and down convs
+        checkpoint_style: bool = None,              # Either inside block or outside block
+        block_counts: list = [2,2,2,2,2,2,2,2,2],   # Can be used to test staging ratio: 
+                                                    # [3,3,9,3] in Swin as opposed to [2,2,2,2,2] in nnUNet
         norm_type = 'group',
-        dim = '3d',                                # 2d or 3d
+        dim = '3d',                                 # 2d or 3d
         grn = False,
         mode = 'train'
     ):
@@ -37,6 +37,7 @@ class EfficientMedNeXt(nn.Module):
             self.outside_block_checkpointing = True
         assert dim in ['2d', '3d']
         print(kernel_sizes)
+
         if kernel_sizes is not None:
             enc_kernel_sizes = kernel_sizes
             dec_kernel_sizes = kernel_sizes

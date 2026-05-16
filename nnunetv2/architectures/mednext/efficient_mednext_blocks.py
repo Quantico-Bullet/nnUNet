@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from torchvision.transforms import v2
+
 class MultiDilationDepthwiseConv3D(nn.Module):
     def __init__(self, in_channels, conv, kernel_sizes=[1,3,5], strides=[1,1,1], dw_parallel=True):
         super(MultiDilationDepthwiseConv3D, self).__init__()
@@ -181,6 +183,8 @@ class EfficientMedNeXtUpBlock(EfficientMedNeXtBlock):
                 kernel_size = 1,
                 stride = 2
                 )
+            
+        self.gauss_noise = v2.GaussianNoise()
 
     def forward(self, x, dummy_tensor=None):
         
@@ -197,7 +201,8 @@ class EfficientMedNeXtUpBlock(EfficientMedNeXtBlock):
                 res = torch.nn.functional.pad(res, (1,0,1,0))
             elif self.dim == '3d':
                 res = torch.nn.functional.pad(res, (1,0,1,0,1,0))
-            x1 = x1 + res
+                
+            x1 = x1 + self.gauss_noise(res)
 
         return x1
 

@@ -150,7 +150,7 @@ class nnUNetTrainer(object):
         self.weight_decay = 3e-5
         self.oversample_foreground_percent = 0.33
         self.probabilistic_oversampling = False
-        self.num_iterations_per_epoch = 250
+        self.num_iterations_per_epoch = 200
         self.num_val_iterations_per_epoch = 50
         self.num_epochs = 250
         self.current_epoch = 0
@@ -635,7 +635,7 @@ class nnUNetTrainer(object):
 
         # we use the patch size to determine whether we need 2D or 3D dataloaders. We also use it to determine whether
         # we need to use dummy 2D augmentation (in case of 3D training) and what our initial patch size should be
-        self.custom_patch_size = [128, 128, 96]#self.configuration_manager.patch_size
+        self.custom_patch_size = [96, 96, 96]#self.configuration_manager.patch_size
 
 
         # needed for deep supervision: how much do we need to downscale the segmentation targets for the different
@@ -679,14 +679,14 @@ class nnUNetTrainer(object):
                                  sampling_probabilities=None, pad_sides=None, transforms=tr_transforms,
                                  probabilistic_oversampling=self.probabilistic_oversampling)
         dl_val = nnUNetDataLoader(dataset_val, self.batch_size,
-                                  self.configuration_manager.patch_size,
-                                  self.configuration_manager.patch_size,
+                                  initial_patch_size, #self.configuration_manager.patch_size,
+                                  initial_patch_size,
                                   self.label_manager,
                                   oversample_foreground_percent=self.oversample_foreground_percent,
                                   sampling_probabilities=None, pad_sides=None, transforms=val_transforms,
                                   probabilistic_oversampling=self.probabilistic_oversampling)
 
-        allowed_num_processes = get_allowed_n_proc_DA()
+        allowed_num_processes = 4#get_allowed_n_proc_DA()
         if allowed_num_processes == 0:
             mt_gen_train = SingleThreadedAugmenter(dl_tr, None)
             mt_gen_val = SingleThreadedAugmenter(dl_val, None)
@@ -1401,11 +1401,11 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
     def __init__(self, plans, configuration, fold, dataset_json, device = torch.device('cuda')):
         super().__init__(plans, configuration, fold, dataset_json, device)
 
-        self.initial_lr = 0.9e-2
-        self.num_epochs = 50
+        self.initial_lr = 1e-2
+        self.num_epochs = 10
         self.save_every = 5 # We want to save every 2 epochs
 
-        #wandb.login(key=os.environ["WANDB_API_KEY"])
+        wandb.login(key=os.environ["WANDB_API_KEY"])
         wandb.init(project = "EMedNeXt_Small_PROSTATE", 
                    name = f"PROSTATE_k=3_fold={self.fold}")
 
@@ -1433,8 +1433,8 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         lr_scheduler = CosineAnnealingLR(optimizer, self.num_epochs)
         return optimizer, lr_scheduler
 
-    def on_epoch_end(self):
-        super().on_epoch_end()
+    def on_train_epoch_end(self, train_outputs: dict):
+        super().on_train_epoch_end(train_outputs)
 
         pseudo_dice = self.logger.my_fantastic_logging['dice_per_class_or_region'][-1]
         log_dict = {f"dice_class_{i}": j for i,j in enumerate(pseudo_dice)}
