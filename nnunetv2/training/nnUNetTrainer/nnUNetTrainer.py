@@ -1402,7 +1402,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         super().__init__(plans, configuration, fold, dataset_json, device)
 
         self.initial_lr = 5e-3
-        self.num_iterations_per_epoch = 10
+        self.num_iterations_per_epoch = 250
         self.num_epochs = 150
         self.save_every = 5 # We want to save every 2 epochs
 
