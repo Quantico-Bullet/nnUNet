@@ -223,6 +223,9 @@ class nnUNetTrainer(object):
                 self.print_to_log_file('Using torch.compile...')
                 self.network = torch.compile(self.network)
 
+            self.print_to_log_file("Printing the network:", add_timestamp=False)
+            self.print_to_log_file(self.network, add_timestamp=False)
+
             self.optimizer, self.lr_scheduler = self.configure_optimizers()
             # if ddp, wrap in DDP wrapper
             if self.is_ddp:
@@ -1401,9 +1404,9 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
     def __init__(self, plans, configuration, fold, dataset_json, device = torch.device('cuda')):
         super().__init__(plans, configuration, fold, dataset_json, device)
 
-        self.initial_lr = 5e-3
+        self.initial_lr = 1e-3
         self.num_iterations_per_epoch = 250
-        self.num_epochs = 150
+        self.num_epochs = 90
         self.save_every = 5 # We want to save every 2 epochs
 
         wandb.login(key=os.environ["WANDB_API_KEY"])
@@ -1420,7 +1423,8 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         
         model = create_efficient_mednext(num_input_channels = num_input_channels, 
                                         num_classes = num_output_channels,
-                                        kernel_sizes = [3,5,5],
+                                        kernel_sizes = [3,5,5,7],
+                                        strides = [1,1,1,1],
                                         model_id = "S",
                                         deep_supervision = enable_deep_supervision)
         
