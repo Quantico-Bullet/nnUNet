@@ -1419,6 +1419,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         
         model = create_efficient_mednext(num_input_channels = num_input_channels, 
                                         num_classes = num_output_channels, 
+                                        kernel_sizes = [3, 5, 5],
                                         model_id = "S",
                                         deep_supervision = enable_deep_supervision)
         
