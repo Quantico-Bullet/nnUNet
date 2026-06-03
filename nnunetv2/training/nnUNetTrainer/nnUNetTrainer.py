@@ -1401,7 +1401,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
     def __init__(self, plans, configuration, fold, dataset_json, device = torch.device('cuda')):
         super().__init__(plans, configuration, fold, dataset_json, device)
 
-        self.initial_lr = 1e-2
+        self.initial_lr = 5e-3
         self.num_epochs = 150
         self.save_every = 5 # We want to save every 2 epochs
 
