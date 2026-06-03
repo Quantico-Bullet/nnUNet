@@ -1402,6 +1402,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         super().__init__(plans, configuration, fold, dataset_json, device)
 
         self.initial_lr = 5e-3
+        self.num_iterations_per_epoch = 10
         self.num_epochs = 150
         self.save_every = 5 # We want to save every 2 epochs
 
@@ -1418,8 +1419,7 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
                                    enable_deep_supervision: bool = True) -> nn.Module:
         
         model = create_efficient_mednext(num_input_channels = num_input_channels, 
-                                        num_classes = num_output_channels, 
-                                        kernel_sizes = [3, 5, 5],
+                                        num_classes = num_output_channels,
                                         model_id = "S",
                                         deep_supervision = enable_deep_supervision)
         
@@ -1434,11 +1434,13 @@ class Efficient_MedNeXtTrainer(nnUNetTrainer):
         lr_scheduler = CosineAnnealingLR(optimizer, self.num_epochs)
         return optimizer, lr_scheduler
 
-    def on_train_epoch_end(self, train_outputs: dict):
-        super().on_train_epoch_end(train_outputs)
+    def on_epoch_end(self):
+        super().on_epoch_end()
 
         pseudo_dice = self.logger.my_fantastic_logging['dice_per_class_or_region'][-1]
-        log_dict = {f"dice_class_{i}": j for i,j in enumerate(pseudo_dice)}
+        log_dict = {f"dice_class_{i}": np.round(j, 4) for i,j in enumerate(pseudo_dice)}
+        log_dict["train_loss"] = np.round(self.logger.my_fantastic_logging['train_losses'][-1], decimals=4)
+        log_dict["val_loss"] = np.round(self.logger.my_fantastic_logging['val_losses'][-1], decimals=4)
         log_dict["epoch"] = self.current_epoch
         log_dict["lr"] = self.optimizer.param_groups[0]["lr"]
 
