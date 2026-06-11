@@ -654,8 +654,8 @@ class nnUNetTrainer(object):
 
         initial_patch_size = self.custom_patch_size
 
-        self.print_to_log_file('Setting mirror axes to None to prevent orientation issues.')
-        mirror_axes = None
+        #self.print_to_log_file('Setting mirror axes to None to prevent orientation issues.')
+        #mirror_axes = None
         # training pipeline
         tr_transforms = self.get_training_transforms(
             self.custom_patch_size, rotation_for_DA, deep_supervision_scales, mirror_axes, do_dummy_2d_data_aug,
